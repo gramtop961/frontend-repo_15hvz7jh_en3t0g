@@ -1,9 +1,22 @@
 import React, { useState } from 'react';
 import { Mail, Phone } from 'lucide-react';
 
+const getBackendUrl = () => {
+  const env = import.meta.env.VITE_BACKEND_URL;
+  if (env) return env;
+  try {
+    const url = new URL(window.location.href);
+    url.port = '8000';
+    return url.origin;
+  } catch {
+    return '';
+  }
+};
+
 const Contact = () => {
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [status, setStatus] = useState('idle'); // idle | loading | success | error
+  const [errorText, setErrorText] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -14,14 +27,27 @@ const Contact = () => {
     e.preventDefault();
     if (!form.name || !form.email || !form.message) {
       setStatus('error');
+      setErrorText('Please complete all fields before sending.');
       return;
     }
+
     setStatus('loading');
-    // In this version we simulate a successful submission
-    setTimeout(() => {
+    setErrorText('');
+
+    try {
+      const res = await fetch(`${getBackendUrl()}/api/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error('Failed to send');
+      await res.json();
       setStatus('success');
       setForm({ name: '', email: '', message: '' });
-    }, 900);
+    } catch (err) {
+      setStatus('error');
+      setErrorText('Something went wrong. Please try again later.');
+    }
   };
 
   return (
@@ -111,7 +137,7 @@ const Contact = () => {
               <p className="text-sm text-green-600">Thanks! Your message has been sent.</p>
             )}
             {status === 'error' && (
-              <p className="text-sm text-red-600">Please complete all fields before sending.</p>
+              <p className="text-sm text-red-600">{errorText}</p>
             )}
           </div>
         </form>

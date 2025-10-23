@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
-const projects = [
+const FALLBACK_PROJECTS = [
   {
     title: 'Courtyard Residence',
     location: 'Lisbon, Portugal',
@@ -27,7 +27,40 @@ const projects = [
   },
 ];
 
+const getBackendUrl = () => {
+  const env = import.meta.env.VITE_BACKEND_URL;
+  if (env) return env;
+  try {
+    const url = new URL(window.location.href);
+    url.port = '8000';
+    return url.origin;
+  } catch {
+    return '';
+  }
+};
+
 const Projects = () => {
+  const [items, setItems] = useState(FALLBACK_PROJECTS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch(`${getBackendUrl()}/api/projects`);
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+        if (Array.isArray(data) && data.length) {
+          setItems(data);
+        }
+      } catch (e) {
+        // Fallback already set
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
   return (
     <section id="projects" className="bg-neutral-50 px-6 py-24">
       <div className="mx-auto max-w-6xl">
@@ -43,19 +76,23 @@ const Projects = () => {
           </a>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((p, i) => (
-            <article key={i} className="group relative overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-neutral-200">
-              <div className="aspect-[4/3] overflow-hidden">
-                <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" />
-              </div>
-              <div className="p-4">
-                <h3 className="text-lg font-semibold text-neutral-900">{p.title}</h3>
-                <p className="text-sm text-neutral-600">{p.location}</p>
-              </div>
-            </article>
-          ))}
-        </div>
+        {loading ? (
+          <div className="py-10 text-neutral-500">Loading projects…</div>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {items.map((p, i) => (
+              <article key={i} className="group relative overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-neutral-200">
+                <div className="aspect-[4/3] overflow-hidden">
+                  <img src={p.image} alt={p.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" />
+                </div>
+                <div className="p-4">
+                  <h3 className="text-lg font-semibold text-neutral-900">{p.title}</h3>
+                  <p className="text-sm text-neutral-600">{p.location}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
